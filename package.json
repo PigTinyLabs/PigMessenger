@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "description": "App Messenger nhẹ, dùng riêng cho nhắn tin/gọi video/thông báo",
   "main": "main.js",
-  "author": "Tiny",
+  "author": "PigTinyLabs <tinyspirit99@gmail.com>",
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -38,6 +38,7 @@
         "AppImage",
         "deb"
       ],
+      "maintainer": "PigTinyLabs <tinyspirit99@gmail.com>",
       "icon": "assets/icon.png",
       "category": "Network"
     }
