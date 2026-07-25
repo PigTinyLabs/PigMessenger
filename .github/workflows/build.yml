@@ -42,15 +42,17 @@ jobs:
 
       - name: Build App for macOS (.dmg)
         if: matrix.platform == 'mac'
+        env:
+          MAC_CERTS: ${{ secrets.CSC_LINK }}
+          MAC_CERTS_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_IDENTITY_AUTO_DISCOVERY: false
         run: |
-          if [ -n "${{ secrets.CSC_LINK }}" ]; then
-            echo "${{ secrets.CSC_LINK }}" | base64 --decode > "$GITHUB_WORKSPACE/cert.p12"
+          if [ -n "$MAC_CERTS" ]; then
+            echo "$MAC_CERTS" | base64 --decode > "$GITHUB_WORKSPACE/cert.p12"
             export CSC_LINK="$GITHUB_WORKSPACE/cert.p12"
-            export CSC_KEY_PASSWORD="${{ secrets.CSC_KEY_PASSWORD }}"
+            export CSC_KEY_PASSWORD="$MAC_CERTS_PASSWORD"
           fi
           npm run build:mac
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
 
       - name: Build App for Windows (.exe)
         if: matrix.platform == 'win'
