@@ -31,8 +31,7 @@
     "mac": {
       "target": "dmg",
       "icon": "assets/icon.icns",
-      "category": "public.app-category.social-networking",
-      "identity": "Apple Development: tinyspirit99@icloud.com (XRXWT2Z5J4)"
+      "category": "public.app-category.social-networking"
     },
     "win": {
       "target": "nsis",

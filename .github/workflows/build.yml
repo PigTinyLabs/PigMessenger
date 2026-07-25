@@ -44,7 +44,8 @@ jobs:
         if: matrix.platform == 'mac'
         run: |
           if [ -n "${{ secrets.CSC_LINK }}" ]; then
-            export CSC_LINK="${{ secrets.CSC_LINK }}"
+            echo "${{ secrets.CSC_LINK }}" | base64 --decode > "$GITHUB_WORKSPACE/cert.p12"
+            export CSC_LINK="$GITHUB_WORKSPACE/cert.p12"
             export CSC_KEY_PASSWORD="${{ secrets.CSC_KEY_PASSWORD }}"
           fi
           npm run build:mac
