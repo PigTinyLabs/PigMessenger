@@ -4,7 +4,10 @@
   "version": "1.0.0",
   "description": "App Messenger nhẹ, dùng riêng cho nhắn tin/gọi video/thông báo",
   "main": "main.js",
-  "author": "PigTinyLabs <tinyspirit99@gmail.com>",
+  "author": {
+    "name": "PigTinyLabs",
+    "email": "tinyspirit99@gmail.com"
+  },
   "license": "MIT",
   "scripts": {
     "start": "electron .",
@@ -19,6 +22,7 @@
   "build": {
     "appId": "com.tiny.messengerlite",
     "productName": "Messenger Lite",
+    "copyright": "Copyright © 2026 PigTinyLabs",
     "files": [
       "main.js",
       "preload.js",
@@ -27,7 +31,8 @@
     "mac": {
       "target": "dmg",
       "icon": "assets/icon.icns",
-      "category": "public.app-category.social-networking"
+      "category": "public.app-category.social-networking",
+      "identity": "Apple Development: tinyspirit99@icloud.com (XRXWT2Z5J4)"
     },
     "win": {
       "target": "nsis",
