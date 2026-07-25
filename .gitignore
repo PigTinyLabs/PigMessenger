@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+out/
+build/
+
+# Temporary files
+*.iconset/
+*.log
+.DS_Store
+.env
+.idea/
+.vscode/
