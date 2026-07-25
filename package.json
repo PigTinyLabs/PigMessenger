@@ -1,7 +1,7 @@
 {
   "name": "messenger-lite",
   "productName": "Messenger Lite",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "App Messenger nhẹ, dùng riêng cho nhắn tin/gọi video/thông báo",
   "main": "main.js",
   "author": {
@@ -31,7 +31,8 @@
     "mac": {
       "target": "dmg",
       "icon": "assets/icon.icns",
-      "category": "public.app-category.social-networking"
+      "category": "public.app-category.social-networking",
+      "identity": null
     },
     "win": {
       "target": "nsis",
