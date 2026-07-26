@@ -40,6 +40,21 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Setup Apple Certificate (macOS)
+        if: matrix.platform == 'mac'
+        shell: bash
+        env:
+          MAC_CERTS: ${{ secrets.CSC_LINK }}
+          MAC_CERTS_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+        run: |
+          if [ -n "$MAC_CERTS" ]; then
+            echo "$MAC_CERTS" | base64 --decode > "$GITHUB_WORKSPACE/cert.p12"
+            echo "CSC_LINK=$GITHUB_WORKSPACE/cert.p12" >> $GITHUB_ENV
+            echo "CSC_KEY_PASSWORD=$MAC_CERTS_PASSWORD" >> $GITHUB_ENV
+          else
+            echo "No certificates found, skipping code signing."
+          fi
+
       - name: Build App for macOS (.dmg)
         if: matrix.platform == 'mac'
         env:
