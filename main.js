@@ -160,6 +160,50 @@ ipcMain.on('unread-count', (event, count) => {
   }
 });
 
+function togglePipMode(win) {
+  if (!win) return;
+  const isTop = win.isAlwaysOnTop();
+  if (!isTop) {
+    // Bật PiP
+    win._originalBounds = win.getBounds();
+    win.setAlwaysOnTop(true, 'floating');
+    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    if (process.platform === 'darwin') {
+      win.setWindowButtonVisibility(false); // Ẩn viền (traffic lights) để tràn viền
+    }
+    
+    const { screen } = require('electron');
+    const display = screen.getPrimaryDisplay();
+    const width = 350;
+    const height = 250;
+    win.setBounds({
+      x: display.workAreaSize.width - width - 20,
+      y: display.workAreaSize.height - height - 20,
+      width: width,
+      height: height
+    });
+  } else {
+    // Tắt PiP
+    win.setAlwaysOnTop(false);
+    win.setVisibleOnAllWorkspaces(false);
+    if (process.platform === 'darwin') {
+      win.setWindowButtonVisibility(true);
+    }
+    if (win._originalBounds) {
+      win.setBounds(win._originalBounds);
+    }
+  }
+  
+  // Thông báo lại cho webContents để đổi nút bấm
+  win.webContents.send('pip-state-changed', !isTop);
+  return !isTop;
+}
+
+ipcMain.on('toggle-pip', (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender);
+  togglePipMode(win);
+});
+
 function createAppMenu() {
   const isMac = process.platform === 'darwin';
   const template = [
@@ -188,33 +232,7 @@ function createAppMenu() {
           type: 'checkbox',
           click: (item, focusedWindow) => {
             if (focusedWindow) {
-              const isTop = focusedWindow.isAlwaysOnTop();
-              if (!isTop) {
-                // Bật PiP: Lưu kích thước cũ và thu nhỏ
-                focusedWindow._originalBounds = focusedWindow.getBounds();
-                focusedWindow.setAlwaysOnTop(true, 'floating');
-                focusedWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-                
-                // Thu nhỏ về góc dưới phải
-                const { screen } = require('electron');
-                const display = screen.getPrimaryDisplay();
-                const width = 350;
-                const height = 250;
-                focusedWindow.setBounds({
-                  x: display.workAreaSize.width - width - 20,
-                  y: display.workAreaSize.height - height - 20,
-                  width: width,
-                  height: height
-                });
-              } else {
-                // Tắt PiP: Trả lại kích thước cũ
-                focusedWindow.setAlwaysOnTop(false);
-                focusedWindow.setVisibleOnAllWorkspaces(false);
-                if (focusedWindow._originalBounds) {
-                  focusedWindow.setBounds(focusedWindow._originalBounds);
-                }
-              }
-              item.checked = !isTop;
+              item.checked = togglePipMode(focusedWindow);
             }
           }
         },
