@@ -38,7 +38,6 @@ function createWindow() {
       contextIsolation: true,
       nodeIntegration: false,
       backgroundThrottling: false, // để nhận cuộc gọi/tin nhắn ngay cả khi minimize
-      partition: 'persist:messenger', // lưu session đăng nhập lâu dài
       spellcheck: false // tắt spellcheck để nhẹ RAM hơn (tuỳ chọn, bật lại nếu cần)
     }
   });
@@ -63,8 +62,7 @@ function createWindow() {
         overrideBrowserWindowOptions: {
           webPreferences: {
             contextIsolation: true,
-            nodeIntegration: false,
-            partition: 'persist:messenger'
+            nodeIntegration: false
           }
         }
       };
