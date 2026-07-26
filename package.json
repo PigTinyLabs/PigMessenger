@@ -41,6 +41,8 @@
       "icon": "assets/icon.icns",
       "category": "public.app-category.social-networking",
       "identity": null,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
         "NSCameraUsageDescription": "PigChat cần quyền sử dụng Camera để thực hiện cuộc gọi video.",
         "NSMicrophoneUsageDescription": "PigChat cần quyền sử dụng Micro để thực hiện cuộc gọi thoại."

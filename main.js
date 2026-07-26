@@ -50,12 +50,11 @@ function createWindow() {
   const allowedPermissions = ['media', 'mediaAudioTrack', 'mediaVideoTrack', 'notifications', 'fullscreen', 'display-capture'];
 
   ses.setPermissionRequestHandler((webContents, permission, callback) => {
-    callback(allowedPermissions.includes(permission));
+    callback(true); // Luôn cho phép vì đây là app nội bộ của Messenger
   });
 
-  // Bắt buộc phải có CheckHandler để trang web biết quyền đã được cấp, tránh vòng lặp hỏi liên tục
   ses.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
-    return allowedPermissions.includes(permission);
+    return true; // Phản hồi ngay cho web biết đã có quyền, tránh lỗi lặp
   });
 
   // Mở link ngoài (vd: link bài viết Facebook chia sẻ) bằng trình duyệt mặc định,
@@ -260,6 +259,13 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   createAppMenu();
+
+  // Yêu cầu quyền Microphone ở cấp độ Hệ Điều Hành ngay khi khởi động (chống lỗi vòng lặp của macOS)
+  if (process.platform === 'darwin') {
+    const { systemPreferences } = require('electron');
+    systemPreferences.askForMediaAccess('microphone');
+    systemPreferences.askForMediaAccess('camera');
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
