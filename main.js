@@ -109,6 +109,17 @@ function createTray() {
       label: 'Tải lại trang',
       click: () => mainWindow.webContents.reload()
     },
+    {
+      label: 'Test Thông báo (để macOS nhận diện)',
+      click: () => {
+        if (Notification.isSupported()) {
+          new Notification({
+            title: 'Test Thông báo',
+            body: 'Nếu bạn thấy thông báo này, PigChat đã xuất hiện trong cài đặt Notifications!'
+          }).show();
+        }
+      }
+    },
     { type: 'separator' },
     {
       label: 'Thoát hẳn',
