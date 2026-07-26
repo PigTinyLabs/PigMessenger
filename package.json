@@ -1,7 +1,7 @@
 {
-  "name": "messenger-lite",
+  "name": "pigchat",
   "productName": "PigChat",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "App Messenger nhẹ, dùng riêng cho nhắn tin/gọi video/thông báo",
   "main": "main.js",
   "author": {
@@ -20,8 +20,8 @@
     "electron-builder": "^24.13.3"
   },
   "build": {
-    "appId": "com.tiny.messengerlite",
-    "productName": "Messenger Lite",
+    "appId": "com.tiny.pigchat",
+    "productName": "PigChat",
     "copyright": "Copyright © 2026 PigTinyLabs",
     "files": [
       "main.js",

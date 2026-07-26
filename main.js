@@ -92,7 +92,7 @@ function createTray() {
   tray = new Tray(icon.resize({ width: 16, height: 16 }));
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Mở Messenger',
+      label: 'Mở PigChat',
       click: () => {
         mainWindow.show();
         mainWindow.focus();
@@ -111,7 +111,7 @@ function createTray() {
       }
     }
   ]);
-  tray.setToolTip('Messenger Lite');
+  tray.setToolTip('PigChat');
   tray.setContextMenu(contextMenu);
   tray.on('click', () => {
     mainWindow.isVisible() ? mainWindow.hide() : mainWindow.show();
