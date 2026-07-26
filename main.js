@@ -82,6 +82,10 @@ function createWindow() {
     childWindow.webContents.setWindowOpenHandler(() => {
       return { action: 'allow' }; // Cho phép popups con bên trong màn hình gọi
     });
+    // Báo cho cửa sổ con biết nó là màn hình gọi để hiện nút PiP
+    childWindow.webContents.on('dom-ready', () => {
+      childWindow.webContents.send('init-pip-button');
+    });
   });
 
   // Đóng cửa sổ = thu vào khay hệ thống (tray), không tắt hẳn app,

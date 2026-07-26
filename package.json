@@ -40,7 +40,6 @@
       ],
       "icon": "assets/icon.icns",
       "category": "public.app-category.social-networking",
-      "identity": null,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {

@@ -82,12 +82,16 @@ function injectPipButton() {
 
 window.addEventListener('DOMContentLoaded', () => {
   watchUnreadCount();
-  injectPipButton();
   
   // Yêu cầu quyền thông báo ngay khi tải trang để Facebook biết đã được cấp quyền (qua setPermissionRequestHandler)
   if ('Notification' in window && Notification.permission !== 'granted') {
     Notification.requestPermission();
   }
+});
+
+// Chỉ tiêm nút PiP khi main process xác nhận đây là cửa sổ gọi điện
+ipcRenderer.once('init-pip-button', () => {
+  injectPipButton();
 });
 
 contextBridge.exposeInMainWorld('messengerLite', {
