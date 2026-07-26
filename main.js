@@ -124,11 +124,11 @@ function createTray() {
       click: () => {
         const { Notification } = require('electron');
         if (Notification.isSupported()) {
-          const notif = new Notification({
+          global.testNotif = new Notification({
             title: 'PigChat',
             body: 'Cấp quyền thông báo thành công! Giờ bạn có thể thấy PigChat trong System Settings.'
           });
-          notif.show();
+          global.testNotif.show();
         }
         
         if (mainWindow && mainWindow.webContents) {
@@ -294,6 +294,5 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   isQuitting = true;
-  // Bắt buộc ghi tất cả cookie/storage xuống đĩa trước khi thoát để không bị văng login
-  require('electron').session.fromPartition('persist:messenger').flushStorageData();
+  // Xoá flushStorageData() vì gọi ở đây (lúc app đang tắt) có thể gây hỏng file cookie dẫn đến văng login
 });
