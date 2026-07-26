@@ -47,9 +47,15 @@ function createWindow() {
 
   // Xin quyền camera/mic/notification tự động cho domain Facebook/Messenger
   const ses = mainWindow.webContents.session;
+  const allowedPermissions = ['media', 'mediaAudioTrack', 'mediaVideoTrack', 'notifications', 'fullscreen', 'display-capture'];
+
   ses.setPermissionRequestHandler((webContents, permission, callback) => {
-    const allowed = ['media', 'notifications', 'fullscreen', 'display-capture'];
-    callback(allowed.includes(permission));
+    callback(allowedPermissions.includes(permission));
+  });
+
+  // Bắt buộc phải có CheckHandler để trang web biết quyền đã được cấp, tránh vòng lặp hỏi liên tục
+  ses.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
+    return allowedPermissions.includes(permission);
   });
 
   // Mở link ngoài (vd: link bài viết Facebook chia sẻ) bằng trình duyệt mặc định,
