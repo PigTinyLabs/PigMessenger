@@ -189,8 +189,31 @@ function createAppMenu() {
           click: (item, focusedWindow) => {
             if (focusedWindow) {
               const isTop = focusedWindow.isAlwaysOnTop();
-              focusedWindow.setAlwaysOnTop(!isTop, 'floating');
-              focusedWindow.setVisibleOnAllWorkspaces(!isTop, { visibleOnFullScreen: true });
+              if (!isTop) {
+                // Bật PiP: Lưu kích thước cũ và thu nhỏ
+                focusedWindow._originalBounds = focusedWindow.getBounds();
+                focusedWindow.setAlwaysOnTop(true, 'floating');
+                focusedWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+                
+                // Thu nhỏ về góc dưới phải
+                const { screen } = require('electron');
+                const display = screen.getPrimaryDisplay();
+                const width = 350;
+                const height = 250;
+                focusedWindow.setBounds({
+                  x: display.workAreaSize.width - width - 20,
+                  y: display.workAreaSize.height - height - 20,
+                  width: width,
+                  height: height
+                });
+              } else {
+                // Tắt PiP: Trả lại kích thước cũ
+                focusedWindow.setAlwaysOnTop(false);
+                focusedWindow.setVisibleOnAllWorkspaces(false);
+                if (focusedWindow._originalBounds) {
+                  focusedWindow.setBounds(focusedWindow._originalBounds);
+                }
+              }
               item.checked = !isTop;
             }
           }
@@ -213,9 +236,8 @@ app.whenReady().then(() => {
   ses.setUserAgent(ua);
   app.userAgentFallback = ua;
 
-  // Bỏ clearCache toàn bộ mặc định vì nó có thể vô tình xoá dữ liệu Service Worker của Facebook
-  // Nếu bị kẹt skeleton, chỉ clear bộ nhớ đệm HTTP
-  ses.clearCache();
+  // Bỏ clearCache để không vô tình xoá dữ liệu đăng nhập của Facebook/Messenger
+  // ses.clearCache();
 
   createWindow();
   createTray();
@@ -236,4 +258,6 @@ app.on('window-all-closed', () => {
 
 app.on('before-quit', () => {
   isQuitting = true;
+  // Bắt buộc ghi tất cả cookie/storage xuống đĩa trước khi thoát để không bị văng login
+  require('electron').session.fromPartition('persist:messenger').flushStorageData();
 });

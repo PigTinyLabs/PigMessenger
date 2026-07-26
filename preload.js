@@ -30,6 +30,11 @@ function watchUnreadCount() {
 
 window.addEventListener('DOMContentLoaded', () => {
   watchUnreadCount();
+  
+  // Yêu cầu quyền thông báo ngay khi tải trang để Facebook biết đã được cấp quyền (qua setPermissionRequestHandler)
+  if ('Notification' in window && Notification.permission !== 'granted') {
+    Notification.requestPermission();
+  }
 });
 
 contextBridge.exposeInMainWorld('messengerLite', {
