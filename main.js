@@ -1,8 +1,7 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, shell, Notification, ipcMain, powerMonitor } = require('electron');
 const path = require('path');
 
-// Giả mạo trình duyệt chuẩn để Facebook không chặn/khoá chức năng (tránh lỗi skeleton screen và mất login)
-app.userAgentFallback = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+
 
 const getTargetUrl = () => String.fromCharCode(104, 116, 116, 112, 115, 58, 47, 47, 119, 119, 119, 46, 109, 101, 115, 115, 101, 110, 103, 101, 114, 46, 99, 111, 109, 47);
 const MESSENGER_URL = getTargetUrl();
@@ -128,6 +127,17 @@ ipcMain.on('unread-count', (event, count) => {
 });
 
 app.whenReady().then(() => {
+  // Lấy User-Agent chuẩn của Chromium lõi và bóc tách các dấu hiệu nhận biết của Electron/PigChat
+  // Điều này đảm bảo UA khớp 100% với sec-ch-ua headers, qua mặt hoàn toàn bộ lọc bot của Facebook.
+  const defaultSession = require('electron').session.defaultSession;
+  let ua = defaultSession.getUserAgent();
+  ua = ua.replace(/PigChat\/[0-9\.]+ /i, '').replace(/Electron\/[0-9\.]+ /i, '');
+  defaultSession.setUserAgent(ua);
+  app.userAgentFallback = ua;
+
+  // Xoá toàn bộ cache cũ bị hỏng (gây kẹt ở màn hình skeleton) - Lưu ý: Không làm mất Cookies đăng nhập
+  defaultSession.clearCache();
+
   createWindow();
   createTray();
 
