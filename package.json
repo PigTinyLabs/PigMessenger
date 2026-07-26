@@ -1,7 +1,7 @@
 {
   "name": "pigchat",
   "productName": "PigChat",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "description": "App Messenger nhẹ, dùng riêng cho nhắn tin/gọi video/thông báo",
   "main": "main.js",
   "author": {
@@ -40,7 +40,11 @@
       ],
       "icon": "assets/icon.icns",
       "category": "public.app-category.social-networking",
-      "identity": null
+      "identity": null,
+      "extendInfo": {
+        "NSCameraUsageDescription": "PigChat cần quyền sử dụng Camera để thực hiện cuộc gọi video.",
+        "NSMicrophoneUsageDescription": "PigChat cần quyền sử dụng Micro để thực hiện cuộc gọi thoại."
+      }
     },
     "win": {
       "target": "nsis",

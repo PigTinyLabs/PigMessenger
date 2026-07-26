@@ -57,11 +57,27 @@ function createWindow() {
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     const mDomain = String.fromCharCode(109, 101, 115, 115, 101, 110, 103, 101, 114, 46, 99, 111, 109);
     const fDomain = String.fromCharCode(102, 97, 99, 101, 98, 111, 111, 107, 46, 99, 111, 109);
-    if (url.includes(mDomain) || url.includes(fDomain)) {
-      return { action: 'allow' };
+    if (url.includes(mDomain) || url.includes(fDomain) || url === 'about:blank' || url.startsWith('blob:')) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          webPreferences: {
+            contextIsolation: true,
+            nodeIntegration: false,
+            partition: 'persist:messenger'
+          }
+        }
+      };
     }
     shell.openExternal(url);
     return { action: 'deny' };
+  });
+
+  // Hỗ trợ cửa sổ gọi điện của Messenger khi vừa bật lên
+  mainWindow.webContents.on('did-create-window', (childWindow) => {
+    childWindow.webContents.setWindowOpenHandler(() => {
+      return { action: 'allow' }; // Cho phép popups con bên trong màn hình gọi
+    });
   });
 
   // Đóng cửa sổ = thu vào khay hệ thống (tray), không tắt hẳn app,
