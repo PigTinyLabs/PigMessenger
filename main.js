@@ -1,7 +1,8 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, shell, Notification, ipcMain, powerMonitor } = require('electron');
 const path = require('path');
 
-// Để Electron sử dụng cấu hình mặc định, tránh lỗi giật lag do thiếu RAM hoặc liên tục dọn rác (GC)
+// Giả mạo trình duyệt chuẩn để Facebook không chặn/khoá chức năng (tránh lỗi skeleton screen và mất login)
+app.userAgentFallback = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
 const getTargetUrl = () => String.fromCharCode(104, 116, 116, 112, 115, 58, 47, 47, 119, 119, 119, 46, 109, 101, 115, 115, 101, 110, 103, 101, 114, 46, 99, 111, 109, 47);
 const MESSENGER_URL = getTargetUrl();
