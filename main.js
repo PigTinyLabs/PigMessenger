@@ -34,6 +34,7 @@ function createWindow() {
     backgroundColor: '#0b0b12',
     autoHideMenuBar: true, // ẩn menu bar mặc định (File/Edit/...) cho gọn
     webPreferences: {
+      partition: 'persist:messenger', // Sử dụng partition riêng để bảo toàn session lâu dài
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
@@ -112,11 +113,13 @@ function createTray() {
     {
       label: 'Test Thông báo (để macOS nhận diện)',
       click: () => {
-        if (Notification.isSupported()) {
-          new Notification({
-            title: 'Test Thông báo',
-            body: 'Nếu bạn thấy thông báo này, PigChat đã xuất hiện trong cài đặt Notifications!'
-          }).show();
+        // Gửi lệnh xuống webContents để hiển thị HTML5 Notification (thường dễ kích hoạt macOS permission hơn)
+        if (mainWindow && mainWindow.webContents) {
+          mainWindow.webContents.executeJavaScript(`
+            new Notification('Test Thông báo', {
+              body: 'Nếu bạn thấy thông báo này, PigChat đã xuất hiện trong cài đặt Notifications!'
+            });
+          `).catch(err => console.error(err));
         }
       }
     },
@@ -152,16 +155,18 @@ ipcMain.on('unread-count', (event, count) => {
 });
 
 app.whenReady().then(() => {
-  // Lấy User-Agent chuẩn của Chromium lõi và bóc tách các dấu hiệu nhận biết của Electron/PigChat
-  // Điều này đảm bảo UA khớp 100% với sec-ch-ua headers, qua mặt hoàn toàn bộ lọc bot của Facebook.
-  const defaultSession = require('electron').session.defaultSession;
-  let ua = defaultSession.getUserAgent();
+  app.setAppUserModelId('com.tiny.pigchat'); // Giúp OS nhận diện app chính xác
+
+  // Lấy User-Agent chuẩn và áp dụng cho partition của messenger
+  const ses = require('electron').session.fromPartition('persist:messenger');
+  let ua = ses.getUserAgent();
   ua = ua.replace(/PigChat\/[0-9\.]+ /i, '').replace(/Electron\/[0-9\.]+ /i, '');
-  defaultSession.setUserAgent(ua);
+  ses.setUserAgent(ua);
   app.userAgentFallback = ua;
 
-  // Xoá toàn bộ cache cũ bị hỏng (gây kẹt ở màn hình skeleton) - Lưu ý: Không làm mất Cookies đăng nhập
-  defaultSession.clearCache();
+  // Bỏ clearCache toàn bộ mặc định vì nó có thể vô tình xoá dữ liệu Service Worker của Facebook
+  // Nếu bị kẹt skeleton, chỉ clear bộ nhớ đệm HTTP
+  ses.clearCache();
 
   createWindow();
   createTray();
