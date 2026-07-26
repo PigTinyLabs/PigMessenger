@@ -272,11 +272,20 @@ app.whenReady().then(() => {
   createTray();
   createAppMenu();
 
-  // Yêu cầu quyền Microphone ở cấp độ Hệ Điều Hành ngay khi khởi động (chống lỗi vòng lặp của macOS)
+  // Yêu cầu quyền Microphone ở cấp độ Hệ Điều Hành ngay khi khởi động
   if (process.platform === 'darwin') {
     const { systemPreferences } = require('electron');
     systemPreferences.askForMediaAccess('microphone');
     systemPreferences.askForMediaAccess('camera');
+    
+    // Tự động chuyển app vào Applications folder để macOS không chặn thông báo
+    if (!app.isInApplicationsFolder()) {
+      try {
+        app.moveToApplicationsFolder();
+      } catch (e) {
+        console.error('Không thể di chuyển app vào Applications:', e);
+      }
+    }
   }
 
   app.on('activate', () => {
