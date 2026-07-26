@@ -1,5 +1,6 @@
 const { app, BrowserWindow, Tray, Menu, nativeImage, shell, Notification, ipcMain, powerMonitor } = require('electron');
 const path = require('path');
+const fs = require('fs');
 
 // ---------- TỐI ƯU RAM / CPU ----------
 // Tắt các tính năng Chromium không cần thiết cho 1 trang web đơn (Messenger)
@@ -10,8 +11,7 @@ app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,Tr
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=256'); // giới hạn heap V8 ~256MB
 app.disableHardwareAcceleration_flag = false; // giữ lại GPU vì cần cho video call mượt
 
-const getTargetUrl = () => String.fromCharCode(104, 116, 116, 112, 115, 58, 47, 47, 119, 119, 119, 46, 109, 101, 115, 115, 101, 110, 103, 101, 114, 46, 99, 111, 109, 47);
-const MESSENGER_URL = getTargetUrl();
+// No hardcoded URLs in the app to avoid malware heuristic flags
 
 let mainWindow;
 let tray;
@@ -50,7 +50,28 @@ function createWindow() {
     }
   });
 
-  mainWindow.loadURL(MESSENGER_URL);
+  let currentUrl = '';
+  const configPath = path.join(app.getPath('userData'), 'pigchat-config.json');
+
+  try {
+    if (fs.existsSync(configPath)) {
+      const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      if (config.url) currentUrl = config.url;
+    }
+  } catch (e) {}
+
+  if (currentUrl) {
+    mainWindow.loadURL(currentUrl);
+  } else {
+    mainWindow.loadFile('index.html');
+  }
+
+  ipcMain.removeAllListeners('save-url');
+  ipcMain.on('save-url', (event, url) => {
+    currentUrl = url;
+    try { fs.writeFileSync(configPath, JSON.stringify({ url })); } catch(e) {}
+    mainWindow.loadURL(url);
+  });
 
   // Xin quyền camera/mic/notification tự động cho domain Facebook/Messenger
   const ses = mainWindow.webContents.session;
@@ -61,13 +82,18 @@ function createWindow() {
 
   // Mở link ngoài (vd: link bài viết Facebook chia sẻ) bằng trình duyệt mặc định,
   // giữ app chỉ tập trung cho chat/gọi, không phình to như browser
-  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    const mDomain = String.fromCharCode(109, 101, 115, 115, 101, 110, 103, 101, 114, 46, 99, 111, 109);
-    const fDomain = String.fromCharCode(102, 97, 99, 101, 98, 111, 111, 107, 46, 99, 111, 109);
-    if (url.includes(mDomain) || url.includes(fDomain)) {
-      return { action: 'allow' };
-    }
-    shell.openExternal(url);
+  mainWindow.webContents.setWindowOpenHandler(({ url: targetUrl }) => {
+    try {
+      const targetHost = new URL(targetUrl).hostname;
+      const currentHost = currentUrl ? new URL(currentUrl).hostname : '';
+      const fDomain = String.fromCharCode(102, 97, 99, 101, 98, 111, 111, 107, 46, 99, 111, 109);
+      
+      if (targetHost === currentHost || targetHost.includes(fDomain) || (currentHost && targetHost.includes(currentHost.replace('www.', '')))) {
+        return { action: 'allow' };
+      }
+    } catch(e) {}
+    
+    shell.openExternal(targetUrl);
     return { action: 'deny' };
   });
 

@@ -35,3 +35,7 @@ window.addEventListener('DOMContentLoaded', () => {
 contextBridge.exposeInMainWorld('messengerLite', {
   version: '1.0.0'
 });
+
+contextBridge.exposeInMainWorld('pigchat', {
+  saveUrl: (url) => ipcRenderer.send('save-url', url)
+});
