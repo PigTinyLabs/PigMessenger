@@ -160,6 +160,49 @@ ipcMain.on('unread-count', (event, count) => {
   }
 });
 
+function createAppMenu() {
+  const isMac = process.platform === 'darwin';
+  const template = [
+    ...(isMac ? [{
+      label: app.name,
+      submenu: [
+        { role: 'about' },
+        { type: 'separator' },
+        { role: 'services' },
+        { type: 'separator' },
+        { role: 'hide' },
+        { role: 'hideOthers' },
+        { role: 'unhide' },
+        { type: 'separator' },
+        { role: 'quit' }
+      ]
+    }] : []),
+    {
+      label: 'Tuỳ chỉnh',
+      submenu: [
+        { role: 'reload', label: 'Tải lại trang' },
+        { type: 'separator' },
+        {
+          label: 'Ghim trên cùng (Picture-in-Picture)',
+          accelerator: 'CmdOrCtrl+Shift+P',
+          type: 'checkbox',
+          click: (item, focusedWindow) => {
+            if (focusedWindow) {
+              const isTop = focusedWindow.isAlwaysOnTop();
+              focusedWindow.setAlwaysOnTop(!isTop, 'floating');
+              focusedWindow.setVisibleOnAllWorkspaces(!isTop, { visibleOnFullScreen: true });
+              item.checked = !isTop;
+            }
+          }
+        },
+        { type: 'separator' },
+        { role: 'toggledevtools', label: 'Công cụ phát triển (DevTools)' }
+      ]
+    }
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 app.whenReady().then(() => {
   app.setAppUserModelId('com.tiny.pigchat'); // Giúp OS nhận diện app chính xác
 
@@ -176,6 +219,7 @@ app.whenReady().then(() => {
 
   createWindow();
   createTray();
+  createAppMenu();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
