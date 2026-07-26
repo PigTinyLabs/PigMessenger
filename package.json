@@ -1,7 +1,7 @@
 {
   "name": "pigchat",
   "productName": "PigChat",
-  "version": "1.0.12",
+  "version": "1.0.13",
   "description": "App Messenger nhẹ, dùng riêng cho nhắn tin/gọi video/thông báo",
   "main": "main.js",
   "author": {
@@ -26,20 +26,21 @@
     "files": [
       "main.js",
       "preload.js",
-      "assets/**/*"
+      "assets/**/*",
+      "package.json"
     ],
     "mac": {
       "target": [
         {
           "target": "dmg",
           "arch": [
-            "arm64",
-            "x64"
+            "universal"
           ]
         }
       ],
       "icon": "assets/icon.icns",
-      "category": "public.app-category.social-networking"
+      "category": "public.app-category.social-networking",
+      "identity": null
     },
     "win": {
       "target": "nsis",
