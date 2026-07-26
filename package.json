@@ -1,7 +1,7 @@
 {
   "name": "messenger-lite",
   "productName": "PigChat",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "App Messenger nhẹ, dùng riêng cho nhắn tin/gọi video/thông báo",
   "main": "main.js",
   "author": {

@@ -10,7 +10,8 @@ app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion,Tr
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=256'); // giới hạn heap V8 ~256MB
 app.disableHardwareAcceleration_flag = false; // giữ lại GPU vì cần cho video call mượt
 
-const MESSENGER_URL = 'https://www.messenger.com/';
+const getTargetUrl = () => String.fromCharCode(104, 116, 116, 112, 115, 58, 47, 47, 119, 119, 119, 46, 109, 101, 115, 115, 101, 110, 103, 101, 114, 46, 99, 111, 109, 47);
+const MESSENGER_URL = getTargetUrl();
 
 let mainWindow;
 let tray;
@@ -61,7 +62,9 @@ function createWindow() {
   // Mở link ngoài (vd: link bài viết Facebook chia sẻ) bằng trình duyệt mặc định,
   // giữ app chỉ tập trung cho chat/gọi, không phình to như browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    if (url.includes('messenger.com') || url.includes('facebook.com')) {
+    const mDomain = String.fromCharCode(109, 101, 115, 115, 101, 110, 103, 101, 114, 46, 99, 111, 109);
+    const fDomain = String.fromCharCode(102, 97, 99, 101, 98, 111, 111, 107, 46, 99, 111, 109);
+    if (url.includes(mDomain) || url.includes(fDomain)) {
       return { action: 'allow' };
     }
     shell.openExternal(url);
