@@ -1,7 +1,7 @@
 {
   "name": "messenger-lite",
   "productName": "PigChat",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "App Messenger nhẹ, dùng riêng cho nhắn tin/gọi video/thông báo",
   "main": "main.js",
   "author": {
@@ -16,7 +16,7 @@
     "build:linux": "electron-builder --linux --publish never"
   },
   "devDependencies": {
-    "electron": "^31.0.0",
+    "electron": "^43.1.0",
     "electron-builder": "^24.13.3"
   },
   "build": {
