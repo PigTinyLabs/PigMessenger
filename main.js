@@ -122,13 +122,21 @@ function createTray() {
     {
       label: 'Test Thông báo (để macOS nhận diện)',
       click: () => {
-        // Gửi lệnh xuống webContents để hiển thị HTML5 Notification (thường dễ kích hoạt macOS permission hơn)
+        const { Notification } = require('electron');
+        if (Notification.isSupported()) {
+          const notif = new Notification({
+            title: 'PigChat',
+            body: 'Cấp quyền thông báo thành công! Giờ bạn có thể thấy PigChat trong System Settings.'
+          });
+          notif.show();
+        }
+        
         if (mainWindow && mainWindow.webContents) {
           mainWindow.webContents.executeJavaScript(`
-            new Notification('Test Thông báo', {
-              body: 'Nếu bạn thấy thông báo này, PigChat đã xuất hiện trong cài đặt Notifications!'
-            });
-          `).catch(err => console.error(err));
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('PigChat Web', { body: 'Thông báo từ Messenger' });
+            }
+          `).catch(e => console.error(e));
         }
       }
     },
