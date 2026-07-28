@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, shell, Notification, ipcMain, powerMonitor } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, shell, Notification, ipcMain, powerMonitor, desktopCapturer } = require('electron');
 const path = require('path');
 
 
@@ -50,11 +50,38 @@ function createWindow() {
   const allowedPermissions = ['media', 'mediaAudioTrack', 'mediaVideoTrack', 'notifications', 'fullscreen', 'display-capture'];
 
   ses.setPermissionRequestHandler((webContents, permission, callback) => {
-    callback(true); // Luôn cho phép vì đây là app nội bộ của Messenger
+    if (allowedPermissions.includes(permission)) {
+      callback(true);
+    } else {
+      console.log('Từ chối quyền:', permission);
+      callback(false);
+    }
   });
 
   ses.setPermissionCheckHandler((webContents, permission, requestingOrigin, details) => {
-    return true; // Phản hồi ngay cho web biết đã có quyền, tránh lỗi lặp
+    if (allowedPermissions.includes(permission)) {
+      return true;
+    }
+    return false;
+  });
+
+  ses.setDevicePermissionHandler((details) => {
+    return true; // Cho phép truy cập danh sách thiết bị (camera/micro)
+  });
+
+  ses.setDisplayMediaRequestHandler((request, callback) => {
+    desktopCapturer.getSources({ types: ['screen'] }).then((sources) => {
+      // Tự động cấp quyền chia sẻ màn hình đầu tiên tìm thấy
+      const screen = sources.find(s => s.id.startsWith('screen')) || sources[0];
+      if (screen) {
+        callback({ video: screen, audio: 'loopback' });
+      } else {
+        callback(); // Hủy nếu không có
+      }
+    }).catch(err => {
+      console.error('Lỗi khi lấy danh sách màn hình chia sẻ:', err);
+      callback();
+    });
   });
 
   // Mở link ngoài (vd: link bài viết Facebook chia sẻ) bằng trình duyệt mặc định,
