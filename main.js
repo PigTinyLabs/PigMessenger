@@ -1,6 +1,5 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, shell, Notification, ipcMain, powerMonitor, desktopCapturer, dialog } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, shell, Notification, ipcMain, powerMonitor, desktopCapturer, dialog, net } = require('electron');
 const path = require('path');
-const { autoUpdater } = require('electron-updater');
 
 
 
@@ -11,66 +10,78 @@ let mainWindow;
 let tray;
 let isQuitting = false;
 
+const GITHUB_OWNER = 'PigTinyLabs';
+const GITHUB_REPO = 'PigMessenger';
+const CURRENT_VERSION = app.getVersion();
+
+function compareVersions(v1, v2) {
+  const a = v1.replace(/^v/, '').split('.').map(Number);
+  const b = v2.replace(/^v/, '').split('.').map(Number);
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    if ((a[i] || 0) > (b[i] || 0)) return 1;
+    if ((a[i] || 0) < (b[i] || 0)) return -1;
+  }
+  return 0;
+}
+
 function setupAutoUpdater() {
-  // Kiểm tra update sau 5 giây kể từ lúc app khởi động (tránh block UI)
-  setTimeout(() => {
-    autoUpdater.checkForUpdates().catch(err => {
-      console.log('Kiểm tra update thất bại:', err?.message);
-    });
-  }, 5000);
+  const checkForUpdates = async () => {
+    try {
+      const res = await net.fetch(
+        `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`,
+        { headers: { 'User-Agent': 'PigChat-Updater' } }
+      );
+      if (!res.ok) return;
 
-  // Kiểm tra lại mỗi 2 tiếng
-  setInterval(() => {
-    autoUpdater.checkForUpdates().catch(() => {});
-  }, 2 * 60 * 60 * 1000);
+      const release = await res.json();
+      const latestVersion = release.tag_name; // v1.0.17
+      if (!latestVersion) return;
 
-  autoUpdater.on('update-available', (info) => {
-    // Thông báo nhẹ khi có phiên bản mới
-    if (Notification.isSupported()) {
-      const notif = new Notification({
-        title: 'PigChat có bản cập nhật mới!',
-        body: `Phiên bản ${info.version} đang được tải xuống nền…`,
-        silent: false
-      });
-      notif.show();
-    }
-    console.log('[AutoUpdater] Có phiên bản mới:', info.version);
-  });
+      console.log(`[Updater] Hiện tại: v${CURRENT_VERSION} | Mới nhất: ${latestVersion}`);
 
-  autoUpdater.on('update-not-available', () => {
-    console.log('[AutoUpdater] App đang dùng phiên bản mới nhất.');
-  });
+      if (compareVersions(latestVersion, CURRENT_VERSION) > 0) {
+        // Có phiên bản mới!
+        console.log('[Updater] Phát hiện bản mới:', latestVersion);
 
-  autoUpdater.on('download-progress', (progress) => {
-    const pct = Math.round(progress.percent);
-    if (mainWindow) {
-      mainWindow.setProgressBar(pct / 100); // Hiện progress trên taskbar/dock
-    }
-    console.log(`[AutoUpdater] Đang tải: ${pct}%`);
-  });
+        // Hiện native OS notification
+        if (Notification.isSupported()) {
+          const notif = new Notification({
+            title: 'PigChat có bản cập nhật mới!',
+            body: `Phiên bản ${latestVersion} đã sẵn sàng. Nhấp vào để xem chi tiết.`,
+            silent: false
+          });
+          notif.on('click', () => {
+            shell.openExternal(`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`);
+          });
+          notif.show();
+        }
 
-  autoUpdater.on('update-downloaded', (info) => {
-    if (mainWindow) mainWindow.setProgressBar(-1); // Xóa progress bar
-    // Hỏi người dùng có muốn khởi động lại ngay không
-    dialog.showMessageBox(mainWindow, {
-      type: 'info',
-      title: 'Cập nhật sẵn sàng — PigChat',
-      message: `PigChat ${info.version} đã tải xong!`,
-      detail: 'Khởi động lại để áp dụng cập nhật. Bạn có thể làm sau nếu đang bận.',
-      buttons: ['Khởi động lại ngay', 'Để sau'],
-      defaultId: 0,
-      cancelId: 1
-    }).then(({ response }) => {
-      if (response === 0) {
-        isQuitting = true;
-        autoUpdater.quitAndInstall();
+        // Hiện dialog hỏi người dùng có muốn tải bản mới không
+        const win = mainWindow;
+        if (win) {
+          const { response } = await dialog.showMessageBox(win, {
+            type: 'info',
+            title: 'Cập nhật mới — PigChat',
+            message: `PigChat ${latestVersion} đã sẵn sàng!`,
+            detail: `Bạn đang dùng v${CURRENT_VERSION}. Bấm "Tải xuống" để mở trang tải bản mới.`,
+            buttons: ['Tải xuống', 'Để sau'],
+            defaultId: 0,
+            cancelId: 1
+          });
+          if (response === 0) {
+            shell.openExternal(`https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`);
+          }
+        }
       }
-    });
-  });
+    } catch (err) {
+      console.log('[Updater] Kiểm tra thất bại:', err?.message);
+    }
+  };
 
-  autoUpdater.on('error', (err) => {
-    console.error('[AutoUpdater] Lỗi:', err?.message);
-  });
+  // Kiểm tra lần đầu sau 10 giây (tránh block lúc khởi động)
+  setTimeout(checkForUpdates, 10000);
+  // Kiểm tra lại mỗi 2 tiếng
+  setInterval(checkForUpdates, 2 * 60 * 60 * 1000);
 }
 
 // Chỉ cho phép 1 instance chạy cùng lúc (đỡ tốn RAM khi mở nhầm nhiều lần)

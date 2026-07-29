@@ -1,7 +1,7 @@
 {
   "name": "pigchat",
   "productName": "PigChat",
-  "version": "1.0.17",
+  "version": "1.0.18",
   "description": "App Messenger nhẹ, dùng riêng cho nhắn tin/gọi video/thông báo",
   "main": "main.js",
   "author": {
@@ -14,9 +14,6 @@
     "build:mac": "electron-builder --mac --publish always",
     "build:win": "electron-builder --win --publish always",
     "build:linux": "electron-builder --linux --publish always"
-  },
-  "dependencies": {
-    "electron-updater": "^6.3.9"
   },
   "devDependencies": {
     "electron": "^43.1.0",
@@ -36,8 +33,7 @@
       "main.js",
       "preload.js",
       "assets/**/*",
-      "package.json",
-      "node_modules/electron-updater/**/*"
+      "package.json"
     ],
     "mac": {
       "target": [
