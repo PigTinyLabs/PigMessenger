@@ -98,6 +98,10 @@ if (!gotLock) {
   });
 }
 
+// Buộc tất cả cửa sổ cùng domain (messenger.com) dùng chung 1 renderer process
+// → TCC permission được warmup ở main window, call popup kế thừa luôn, không bị hỏi lại
+app.commandLine.appendSwitch('process-per-site');
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -118,6 +122,19 @@ function createWindow() {
   });
 
   mainWindow.loadURL(MESSENGER_URL);
+
+  // Warmup getUserMedia trong renderer process ngay khi main window load xong
+  // Sau khi user cho phép 1 lần, renderer process này (được dùng chung cho call popup) sẽ không hỏi lại
+  mainWindow.webContents.on('dom-ready', () => {
+    mainWindow.webContents.executeJavaScript(`
+      (function warmupMediaPermission() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+        navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+          .then(function(stream) { stream.getTracks().forEach(function(t) { t.stop(); }); })
+          .catch(function() {});
+      })()
+    `).catch(() => {});
+  });
 
   // Xin quyền camera/mic/notification tự động cho domain Facebook/Messenger
   const ses = mainWindow.webContents.session;
