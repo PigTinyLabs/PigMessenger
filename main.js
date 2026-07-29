@@ -123,9 +123,12 @@ function createWindow() {
 
   mainWindow.loadURL(MESSENGER_URL);
 
-  // Warmup getUserMedia trong renderer process ngay khi main window load xong
-  // Sau khi user cho phép 1 lần, renderer process này (được dùng chung cho call popup) sẽ không hỏi lại
+  // Warmup chỉ chạy 1 lần duy nhất khi app khởi động, dùng flag để tránh chạy lại mỗi navigation
+  let mediaWarmedUp = false;
   mainWindow.webContents.on('dom-ready', () => {
+    if (mediaWarmedUp) return;
+    mediaWarmedUp = true;
+    // Chỉ warmup audio — KHÔNG dùng video:true vì macOS sẽ phát tiếng chụp hình
     mainWindow.webContents.executeJavaScript(`
       (function warmupMediaPermission() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
@@ -228,17 +231,13 @@ function createWindow() {
       }).catch(() => {});
     }
 
-    childWindow.webContents.on('dom-ready', () => {
-      // Warmup getUserMedia trong renderer context của cửa sổ gọi:
-      // Bắt buộc TCC cache permission cho renderer process này trước khi Messenger dùng
+    // Warmup chỉ 1 lần khi cửa sổ gọi mở, chỉ audio — tránh tiếng chụp hình
+    childWindow.webContents.once('dom-ready', () => {
       childWindow.webContents.executeJavaScript(`
         (function warmupMedia() {
           if (!navigator.mediaDevices) return;
-          navigator.mediaDevices.getUserMedia({ audio: true, video: true })
-            .then(function(stream) {
-              // Dừng ngay sau khi lấy được quyền — Messenger sẽ tự mở stream riêng
-              stream.getTracks().forEach(function(t) { t.stop(); });
-            })
+          navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+            .then(function(stream) { stream.getTracks().forEach(function(t) { t.stop(); }); })
             .catch(function() {});
         })()
       `).catch(() => {});
