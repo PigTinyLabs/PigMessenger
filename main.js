@@ -94,6 +94,9 @@ function createWindow() {
         action: 'allow',
         overrideBrowserWindowOptions: {
           webPreferences: {
+            // Dùng cùng partition với cửa sổ chính để kế thừa session, cookie và quyền đã cấp
+            partition: 'persist:messenger',
+            preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
             nodeIntegration: false
           }
@@ -109,6 +112,18 @@ function createWindow() {
     childWindow.webContents.setWindowOpenHandler(() => {
       return { action: 'allow' }; // Cho phép popups con bên trong màn hình gọi
     });
+
+    // Áp dụng permission handlers cho session của cửa sổ con (video call popup)
+    // để tránh bị hỏi lại quyền camera/mic mỗi lần mở cuộc gọi
+    const childSes = childWindow.webContents.session;
+    childSes.setPermissionRequestHandler((wc, permission, callback) => {
+      callback(true); // Luôn cho phép trong cửa sổ Messenger
+    });
+    childSes.setPermissionCheckHandler((wc, permission) => {
+      return true; // Phản hồi ngay: đã có quyền
+    });
+    childSes.setDevicePermissionHandler(() => true);
+
     // Báo cho cửa sổ con biết nó là màn hình gọi để hiện nút PiP
     childWindow.webContents.on('dom-ready', () => {
       childWindow.webContents.send('init-pip-button');
