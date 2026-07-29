@@ -157,11 +157,13 @@ function createWindow() {
         action: 'allow',
         overrideBrowserWindowOptions: {
           webPreferences: {
-            // Dùng cùng partition với cửa sổ chính để kế thừa session, cookie và quyền đã cấp
             partition: 'persist:messenger',
             preload: path.join(__dirname, 'preload.js'),
             contextIsolation: true,
-            nodeIntegration: false
+            nodeIntegration: false,
+            // Tắt sandbox để cửa sổ gọi điện kế thừa TCC permission từ main process
+            // (sandbox mặc định khiến macOS coi mỗi renderer là process riêng, bị hỏi lại quyền mic)
+            sandbox: false
           }
         }
       };
@@ -173,22 +175,46 @@ function createWindow() {
   // Hỗ trợ cửa sổ gọi điện của Messenger khi vừa bật lên
   mainWindow.webContents.on('did-create-window', (childWindow) => {
     childWindow.webContents.setWindowOpenHandler(() => {
-      return { action: 'allow' }; // Cho phép popups con bên trong màn hình gọi
+      return { action: 'allow' };
     });
 
-    // Áp dụng permission handlers cho session của cửa sổ con (video call popup)
-    // để tránh bị hỏi lại quyền camera/mic mỗi lần mở cuộc gọi
+    // Permission handlers cho session của cửa sổ con
     const childSes = childWindow.webContents.session;
     childSes.setPermissionRequestHandler((wc, permission, callback) => {
-      callback(true); // Luôn cho phép trong cửa sổ Messenger
+      callback(true);
     });
     childSes.setPermissionCheckHandler((wc, permission) => {
-      return true; // Phản hồi ngay: đã có quyền
+      return true;
     });
     childSes.setDevicePermissionHandler(() => true);
 
-    // Báo cho cửa sổ con biết nó là màn hình gọi để hiện nút PiP
+    // Proactively yêu cầu TCC permission từ main process ngay khi cửa sổ gọi mở
+    // để macOS cache permission trước khi Messenger chạy getUserMedia
+    if (process.platform === 'darwin') {
+      const { systemPreferences } = require('electron');
+      Promise.all([
+        systemPreferences.askForMediaAccess('microphone'),
+        systemPreferences.askForMediaAccess('camera')
+      ]).then(([micGranted, camGranted]) => {
+        console.log('[TCC] microphone:', micGranted, '| camera:', camGranted);
+      }).catch(() => {});
+    }
+
     childWindow.webContents.on('dom-ready', () => {
+      // Warmup getUserMedia trong renderer context của cửa sổ gọi:
+      // Bắt buộc TCC cache permission cho renderer process này trước khi Messenger dùng
+      childWindow.webContents.executeJavaScript(`
+        (function warmupMedia() {
+          if (!navigator.mediaDevices) return;
+          navigator.mediaDevices.getUserMedia({ audio: true, video: true })
+            .then(function(stream) {
+              // Dừng ngay sau khi lấy được quyền — Messenger sẽ tự mở stream riêng
+              stream.getTracks().forEach(function(t) { t.stop(); });
+            })
+            .catch(function() {});
+        })()
+      `).catch(() => {});
+
       childWindow.webContents.send('init-pip-button');
     });
   });
