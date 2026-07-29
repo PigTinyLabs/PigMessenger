@@ -13,10 +13,52 @@ permissions:
   contents: write
 
 jobs:
-  build-and-release:
-    name: Build & Release (${{ matrix.platform }})
-    runs-on: ${{ matrix.os }}
+  # ─── Bước 1: Xoá release cũ & tạo release mới (draft) trước khi build ───
+  prepare-release:
+    name: Prepare GitHub Release
+    runs-on: ubuntu-latest
     if: github.event_name != 'pull_request'
+    outputs:
+      version: ${{ steps.pkg.outputs.version }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get version from package.json
+        id: pkg
+        shell: node {0}
+        run: |
+          const fs = require('fs');
+          const path = require('path');
+          const pkgPath = path.join(process.env.GITHUB_WORKSPACE, 'package.json');
+          const version = JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version;
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
+          console.log(`Version: ${version}`);
+
+      - name: Delete existing release and tag (if exists)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="v${{ steps.pkg.outputs.version }}"
+          gh release delete "$VERSION" --yes 2>/dev/null || echo "Release $VERSION không tồn tại."
+          git push origin ":refs/tags/$VERSION" 2>/dev/null || echo "Tag $VERSION không tồn tại."
+
+      - name: Create draft release (tag + release trống để 3 job upload vào)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="v${{ steps.pkg.outputs.version }}"
+          gh release create "$VERSION" \
+            --title "PigChat $VERSION" \
+            --notes "## PigChat $VERSION" \
+            --draft
+
+  # ─── Bước 2: Build 3 platform song song, upload vào release đã tạo ───
+  build-and-upload:
+    name: Build (${{ matrix.platform }})
+    needs: prepare-release
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -40,26 +82,6 @@ jobs:
 
       - name: Install dependencies
         run: npm install
-
-      - name: Get version from package.json
-        id: pkg
-        shell: node {0}
-        run: |
-          const fs = require('fs');
-          const path = require('path');
-          const pkgPath = path.join(process.env.GITHUB_WORKSPACE, 'package.json');
-          const version = JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version;
-          fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
-          console.log(`Version: ${version}`);
-
-      - name: Delete existing release/tag (nếu đã tồn tại)
-        shell: bash
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          VERSION="v${{ steps.pkg.outputs.version }}"
-          gh release delete "$VERSION" --yes 2>/dev/null || echo "Release $VERSION chưa tồn tại."
-          git push origin ":refs/tags/$VERSION" 2>/dev/null || echo "Tag $VERSION chưa tồn tại."
 
       - name: Setup Apple Certificate (macOS)
         if: matrix.platform == 'mac'
@@ -96,3 +118,18 @@ jobs:
           CSC_IDENTITY_AUTO_DISCOVERY: false
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build:linux
+
+  # ─── Bước 3: Sau khi 3 job upload xong, publish release (bỏ draft) ───
+  publish-release:
+    name: Publish Release
+    needs: [prepare-release, build-and-upload]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Publish release (remove draft)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="v${{ needs.prepare-release.outputs.version }}"
+          gh release edit "$VERSION" --draft=false --repo ${{ github.repository }}
+          echo "✅ Release $VERSION đã được publish!"
