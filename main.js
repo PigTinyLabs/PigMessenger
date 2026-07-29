@@ -400,21 +400,19 @@ app.whenReady().then(() => {
   createAppMenu();
   setupAutoUpdater(); // Bắt đầu theo dõi và tự động tải bản cập nhật mới
 
-  // Yêu cầu quyền Microphone ở cấp độ Hệ Điều Hành ngay khi khởi động
+  // Yêu cầu quyền Microphone/Camera ở cấp macOS TCC trước khi tạo cửa sổ
+  // CHÚ Ý: KHÔNG gọi moveToApplicationsFolder() - nó restart app khiến TCC permission bị reset!
   if (process.platform === 'darwin') {
     const { systemPreferences } = require('electron');
-    systemPreferences.askForMediaAccess('microphone');
-    systemPreferences.askForMediaAccess('camera');
-    
-    // Tự động chuyển app vào Applications folder để macOS không chặn thông báo
-    if (!app.isInApplicationsFolder()) {
-      try {
-        app.moveToApplicationsFolder();
-      } catch (e) {
-        console.error('Không thể di chuyển app vào Applications:', e);
-      }
+    // Chỉ hỏi nếu chưa được cấp, tránh gây popup thừa
+    if (systemPreferences.getMediaAccessStatus('microphone') !== 'granted') {
+      systemPreferences.askForMediaAccess('microphone');
+    }
+    if (systemPreferences.getMediaAccessStatus('camera') !== 'granted') {
+      systemPreferences.askForMediaAccess('camera');
     }
   }
+
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
