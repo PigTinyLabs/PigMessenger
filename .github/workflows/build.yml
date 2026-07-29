@@ -43,8 +43,12 @@ jobs:
 
       - name: Get version from package.json
         id: pkg
-        shell: bash
-        run: echo "version=$(node -p \"require('./package.json').version\")" >> $GITHUB_OUTPUT
+        shell: node {0}
+        run: |
+          const fs = require('fs');
+          const version = require('./package.json').version;
+          fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
+          console.log(`Version: ${version}`);
 
       - name: Delete existing release/tag (nếu đã tồn tại)
         shell: bash
