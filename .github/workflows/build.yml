@@ -46,7 +46,9 @@ jobs:
         shell: node {0}
         run: |
           const fs = require('fs');
-          const version = require('./package.json').version;
+          const path = require('path');
+          const pkgPath = path.join(process.env.GITHUB_WORKSPACE, 'package.json');
+          const version = JSON.parse(fs.readFileSync(pkgPath, 'utf8')).version;
           fs.appendFileSync(process.env.GITHUB_OUTPUT, `version=${version}\n`);
           console.log(`Version: ${version}`);
 
