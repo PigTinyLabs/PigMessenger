@@ -28,6 +28,33 @@ function watchUnreadCount() {
   check();
 }
 
+// Hook vào Notification API của trình duyệt để bắt thông báo từ Messenger
+// và chuyển thành Native OS notification qua Electron (có icon app, click mở cửa sổ)
+function interceptNotifications() {
+  const OriginalNotification = window.Notification;
+
+  // Ghi đè constructor
+  function PigChatNotification(title, options = {}) {
+    // Gửi dữ liệu về main process để hiện native OS banner
+    ipcRenderer.send('show-notification', {
+      title: title,
+      body: options.body || '',
+      icon: options.icon || ''
+    });
+    // Tạo notification gốc (silent) để web không bị lỗi
+    return new OriginalNotification(title, { ...options, silent: true });
+  }
+
+  // Giữ nguyên các static properties
+  PigChatNotification.permission = OriginalNotification.permission;
+  PigChatNotification.requestPermission = OriginalNotification.requestPermission.bind(OriginalNotification);
+  Object.defineProperty(PigChatNotification, 'permission', {
+    get: () => OriginalNotification.permission
+  });
+
+  window.Notification = PigChatNotification;
+}
+
 function injectPipButton() {
   const btn = document.createElement('div');
   btn.id = 'pigchat-pip-btn';
@@ -82,10 +109,11 @@ function injectPipButton() {
 
 window.addEventListener('DOMContentLoaded', () => {
   watchUnreadCount();
-  
+  interceptNotifications();
+
   // Yêu cầu quyền thông báo ngay khi tải trang để Facebook biết đã được cấp quyền (qua setPermissionRequestHandler)
-  if ('Notification' in window && Notification.permission !== 'granted') {
-    Notification.requestPermission();
+  if ('Notification' in window && window.Notification.permission !== 'granted') {
+    window.Notification.requestPermission();
   }
 });
 

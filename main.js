@@ -276,6 +276,28 @@ ipcMain.on('unread-count', (event, count) => {
   }
 });
 
+// Nhận thông báo tin nhắn từ preload (hook Notification API của Messenger)
+// và hiện Native OS banner với icon PigChat, click vào sẽ mở/focus app
+ipcMain.on('show-notification', (event, { title, body }) => {
+  if (!Notification.isSupported()) return;
+
+  const notif = new Notification({
+    title: title || 'PigChat',
+    body: body || '',
+    icon: path.join(__dirname, 'assets', 'icon.png'),
+    silent: false
+  });
+
+  notif.on('click', () => {
+    if (mainWindow) {
+      if (!mainWindow.isVisible()) mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+
+  notif.show();
+});
+
 function togglePipMode(win) {
   if (!win) return;
   const isTop = win.isAlwaysOnTop();
