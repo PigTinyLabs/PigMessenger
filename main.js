@@ -1,5 +1,6 @@
-const { app, BrowserWindow, Tray, Menu, nativeImage, shell, Notification, ipcMain, powerMonitor, desktopCapturer } = require('electron');
+const { app, BrowserWindow, Tray, Menu, nativeImage, shell, Notification, ipcMain, powerMonitor, desktopCapturer, dialog } = require('electron');
 const path = require('path');
+const { autoUpdater } = require('electron-updater');
 
 
 
@@ -9,6 +10,68 @@ const MESSENGER_URL = getTargetUrl();
 let mainWindow;
 let tray;
 let isQuitting = false;
+
+function setupAutoUpdater() {
+  // Kiểm tra update sau 5 giây kể từ lúc app khởi động (tránh block UI)
+  setTimeout(() => {
+    autoUpdater.checkForUpdates().catch(err => {
+      console.log('Kiểm tra update thất bại:', err?.message);
+    });
+  }, 5000);
+
+  // Kiểm tra lại mỗi 2 tiếng
+  setInterval(() => {
+    autoUpdater.checkForUpdates().catch(() => {});
+  }, 2 * 60 * 60 * 1000);
+
+  autoUpdater.on('update-available', (info) => {
+    // Thông báo nhẹ khi có phiên bản mới
+    if (Notification.isSupported()) {
+      const notif = new Notification({
+        title: 'PigChat có bản cập nhật mới!',
+        body: `Phiên bản ${info.version} đang được tải xuống nền…`,
+        silent: false
+      });
+      notif.show();
+    }
+    console.log('[AutoUpdater] Có phiên bản mới:', info.version);
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    console.log('[AutoUpdater] App đang dùng phiên bản mới nhất.');
+  });
+
+  autoUpdater.on('download-progress', (progress) => {
+    const pct = Math.round(progress.percent);
+    if (mainWindow) {
+      mainWindow.setProgressBar(pct / 100); // Hiện progress trên taskbar/dock
+    }
+    console.log(`[AutoUpdater] Đang tải: ${pct}%`);
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    if (mainWindow) mainWindow.setProgressBar(-1); // Xóa progress bar
+    // Hỏi người dùng có muốn khởi động lại ngay không
+    dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: 'Cập nhật sẵn sàng — PigChat',
+      message: `PigChat ${info.version} đã tải xong!`,
+      detail: 'Khởi động lại để áp dụng cập nhật. Bạn có thể làm sau nếu đang bận.',
+      buttons: ['Khởi động lại ngay', 'Để sau'],
+      defaultId: 0,
+      cancelId: 1
+    }).then(({ response }) => {
+      if (response === 0) {
+        isQuitting = true;
+        autoUpdater.quitAndInstall();
+      }
+    });
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('[AutoUpdater] Lỗi:', err?.message);
+  });
+}
 
 // Chỉ cho phép 1 instance chạy cùng lúc (đỡ tốn RAM khi mở nhầm nhiều lần)
 const gotLock = app.requestSingleInstanceLock();
@@ -313,6 +376,7 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   createAppMenu();
+  setupAutoUpdater(); // Bắt đầu theo dõi và tự động tải bản cập nhật mới
 
   // Yêu cầu quyền Microphone ở cấp độ Hệ Điều Hành ngay khi khởi động
   if (process.platform === 'darwin') {

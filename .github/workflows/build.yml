@@ -13,9 +13,10 @@ permissions:
   contents: write
 
 jobs:
-  build:
-    name: Build (${{ matrix.platform }})
+  build-and-release:
+    name: Build & Release (${{ matrix.platform }})
     runs-on: ${{ matrix.os }}
+    if: github.event_name != 'pull_request'
     strategy:
       fail-fast: false
       matrix:
@@ -40,6 +41,20 @@ jobs:
       - name: Install dependencies
         run: npm install
 
+      - name: Get version from package.json
+        id: pkg
+        shell: bash
+        run: echo "version=$(node -p \"require('./package.json').version\")" >> $GITHUB_OUTPUT
+
+      - name: Delete existing release/tag (nếu đã tồn tại)
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="v${{ steps.pkg.outputs.version }}"
+          gh release delete "$VERSION" --yes 2>/dev/null || echo "Release $VERSION chưa tồn tại."
+          git push origin ":refs/tags/$VERSION" 2>/dev/null || echo "Tag $VERSION chưa tồn tại."
+
       - name: Setup Apple Certificate (macOS)
         if: matrix.platform == 'mac'
         shell: bash
@@ -55,78 +70,23 @@ jobs:
             echo "No certificates found, skipping code signing."
           fi
 
-      - name: Build App for macOS (.dmg)
+      - name: Build & Publish App for macOS (.dmg)
         if: matrix.platform == 'mac'
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
-        run: |
-          npm run build:mac
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build:mac
 
-      - name: Build App for Windows (.exe)
+      - name: Build & Publish App for Windows (.exe)
         if: matrix.platform == 'win'
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npm run build:win
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
 
-      - name: Build App for Linux (.AppImage)
+      - name: Build & Publish App for Linux (.AppImage)
         if: matrix.platform == 'linux'
-        run: npm run build:linux
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: false
-
-      - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: messenger-lite-${{ matrix.platform }}
-          path: |
-            dist/*.dmg
-            dist/*.exe
-            dist/*.AppImage
-            dist/*.deb
-          if-no-files-found: warn
-
-  release:
-    name: Create GitHub Release
-    needs: build
-    if: github.event_name != 'pull_request'
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-        with:
-          path: artifacts
-
-      - name: Organize release files
-        run: |
-          mkdir -p release-files
-          find artifacts -type f \( -name "*.dmg" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" \) -exec cp {} release-files/ \;
-          ls -la release-files/
-
-      - name: Delete existing release and tag v1.0.0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # Xoá release cũ nếu tồn tại
-          RELEASE_ID=$(gh release view v1.0.0 --json id -q '.id' 2>/dev/null || echo "")
-          if [ -n "$RELEASE_ID" ]; then
-            gh release delete v1.0.0 --yes
-            echo "Đã xoá release v1.0.0 cũ."
-          fi
-          # Xoá tag cũ trên remote nếu tồn tại
-          git push origin :refs/tags/v1.0.0 2>/dev/null || echo "Tag v1.0.0 chưa tồn tại, bỏ qua."
-
-      - name: Create GitHub Release v1.0.0
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v1.0.0
-          name: PigChat v1.0.0
-          files: release-files/*
-          draft: false
-          prerelease: false
-          generate_release_notes: true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npm run build:linux

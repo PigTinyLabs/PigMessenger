@@ -11,9 +11,12 @@
   "license": "MIT",
   "scripts": {
     "start": "electron .",
-    "build:mac": "electron-builder --mac --publish never",
-    "build:win": "electron-builder --win --publish never",
-    "build:linux": "electron-builder --linux --publish never"
+    "build:mac": "electron-builder --mac --publish always",
+    "build:win": "electron-builder --win --publish always",
+    "build:linux": "electron-builder --linux --publish always"
+  },
+  "dependencies": {
+    "electron-updater": "^6.3.9"
   },
   "devDependencies": {
     "electron": "^43.1.0",
@@ -23,11 +26,18 @@
     "appId": "com.tiny.pigchat",
     "productName": "PigChat",
     "copyright": "Copyright © 2026 PigTinyLabs",
+    "publish": {
+      "provider": "github",
+      "owner": "PigTinyLabs",
+      "repo": "PigMessenger",
+      "releaseType": "release"
+    },
     "files": [
       "main.js",
       "preload.js",
       "assets/**/*",
-      "package.json"
+      "package.json",
+      "node_modules/electron-updater/**/*"
     ],
     "mac": {
       "target": [
