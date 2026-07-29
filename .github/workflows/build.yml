@@ -88,7 +88,7 @@ jobs:
   release:
     name: Create GitHub Release
     needs: build
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
@@ -106,9 +106,24 @@ jobs:
           find artifacts -type f \( -name "*.dmg" -o -name "*.exe" -o -name "*.AppImage" -o -name "*.deb" \) -exec cp {} release-files/ \;
           ls -la release-files/
 
-      - name: Create GitHub Release
+      - name: Delete existing release and tag v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Xoá release cũ nếu tồn tại
+          RELEASE_ID=$(gh release view v1.0.0 --json id -q '.id' 2>/dev/null || echo "")
+          if [ -n "$RELEASE_ID" ]; then
+            gh release delete v1.0.0 --yes
+            echo "Đã xoá release v1.0.0 cũ."
+          fi
+          # Xoá tag cũ trên remote nếu tồn tại
+          git push origin :refs/tags/v1.0.0 2>/dev/null || echo "Tag v1.0.0 chưa tồn tại, bỏ qua."
+
+      - name: Create GitHub Release v1.0.0
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v1.0.0
+          name: PigChat v1.0.0
           files: release-files/*
           draft: false
           prerelease: false
