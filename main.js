@@ -284,6 +284,19 @@ function createWindow() {
     // (bỏ comment dòng dưới nếu muốn hành vi này)
     // mainWindow.hide();
   });
+
+  // Chủ động flush cookie/login (persist:messenger) xuống đĩa định kỳ + mỗi khi
+  // ẩn cửa sổ xuống tray. TRƯỚC ĐÂY chỉ trông chờ Chromium tự flush lúc app quit
+  // "sạch" — nếu app bị kill cứng (force quit, macOS kill app translocated,
+  // crash...) thì cookie/IndexedDB login chưa kịp ghi xuống đĩa → mất login mỗi
+  // lần mở lại. Gọi flushStorageData() ở đây (không phải lúc before-quit) để an
+  // toàn, tránh lặp lại lỗi hỏng file cookie đã gặp trước đó.
+  mainWindow.on('hide', () => {
+    ses.flushStorageData();
+  });
+  setInterval(() => {
+    if (mainWindow && !mainWindow.isDestroyed()) ses.flushStorageData();
+  }, 5 * 60 * 1000);
 }
 
 function createTray() {
