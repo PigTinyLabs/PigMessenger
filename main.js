@@ -102,6 +102,13 @@ if (!gotLock) {
 // → TCC permission được warmup ở main window, call popup kế thừa luôn, không bị hỏi lại
 app.commandLine.appendSwitch('process-per-site');
 
+// Guard toàn cục cho quyền mic/camera của cửa sổ gọi (call popup):
+// Messenger có thể tạo nhiều cửa sổ con (did-create-window fire nhiều lần) chỉ trong
+// 1 lần bấm "gọi video", nên các cờ này PHẢI ở scope module (không phải trong
+// createWindow()/did-create-window) để không bị hỏi/warmup lặp lại nhiều lần.
+let tccAskInFlight = false;
+let callWindowMediaWarmedUp = false;
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 1200,
@@ -220,27 +227,44 @@ function createWindow() {
     childSes.setDevicePermissionHandler(() => true);
 
     // Proactively yêu cầu TCC permission từ main process ngay khi cửa sổ gọi mở
-    // để macOS cache permission trước khi Messenger chạy getUserMedia
-    if (process.platform === 'darwin') {
+    // để macOS cache permission trước khi Messenger chạy getUserMedia.
+    //
+    // CHÚ Ý: Messenger mở NHIỀU cửa sổ con (blank/blob) liên tiếp trong lúc dàn xếp
+    // cuộc gọi (ICE negotiation, popup nút, reconnect...) nên did-create-window có thể
+    // fire 9-10 lần chỉ trong 1 lần bấm "gọi video". Vì tất cả cửa sổ con dùng chung
+    // partition 'persist:messenger' (chung session với main window), quyền TCC chỉ cần
+    // hỏi ĐÚNG 1 LẦN cho cả phiên chạy app — gọi lại askForMediaAccess() nhiều lần gần
+    // như đồng thời là nguyên nhân khiến popup xin quyền mic bị xếp chồng/nhảy liên tục.
+    if (process.platform === 'darwin' && !tccAskInFlight) {
       const { systemPreferences } = require('electron');
-      Promise.all([
-        systemPreferences.askForMediaAccess('microphone'),
-        systemPreferences.askForMediaAccess('camera')
-      ]).then(([micGranted, camGranted]) => {
-        console.log('[TCC] microphone:', micGranted, '| camera:', camGranted);
-      }).catch(() => {});
+      const micStatus = systemPreferences.getMediaAccessStatus('microphone');
+      const camStatus = systemPreferences.getMediaAccessStatus('camera');
+      if (micStatus === 'not-determined' || camStatus === 'not-determined') {
+        tccAskInFlight = true;
+        Promise.all([
+          micStatus === 'not-determined' ? systemPreferences.askForMediaAccess('microphone') : Promise.resolve(micStatus === 'granted'),
+          camStatus === 'not-determined' ? systemPreferences.askForMediaAccess('camera') : Promise.resolve(camStatus === 'granted')
+        ]).then(([micGranted, camGranted]) => {
+          console.log('[TCC] microphone:', micGranted, '| camera:', camGranted);
+        }).catch(() => {}).finally(() => { tccAskInFlight = false; });
+      }
     }
 
-    // Warmup chỉ 1 lần khi cửa sổ gọi mở, chỉ audio — tránh tiếng chụp hình
+    // Warmup chỉ 1 lần cho CẢ PHIÊN APP (không phải 1 lần mỗi cửa sổ con), chỉ audio —
+    // tránh tiếng chụp hình và tránh gọi getUserMedia lặp lại khi Messenger mở nhiều
+    // cửa sổ con trong lúc gọi.
     childWindow.webContents.once('dom-ready', () => {
-      childWindow.webContents.executeJavaScript(`
-        (function warmupMedia() {
-          if (!navigator.mediaDevices) return;
-          navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-            .then(function(stream) { stream.getTracks().forEach(function(t) { t.stop(); }); })
-            .catch(function() {});
-        })()
-      `).catch(() => {});
+      if (!callWindowMediaWarmedUp) {
+        callWindowMediaWarmedUp = true;
+        childWindow.webContents.executeJavaScript(`
+          (function warmupMedia() {
+            if (!navigator.mediaDevices) return;
+            navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+              .then(function(stream) { stream.getTracks().forEach(function(t) { t.stop(); }); })
+              .catch(function() {});
+          })()
+        `).catch(() => {});
+      }
 
       childWindow.webContents.send('init-pip-button');
     });
